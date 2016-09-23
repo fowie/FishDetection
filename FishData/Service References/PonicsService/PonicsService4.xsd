@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:tns="http://schemas.datacontract.org/2004/07/PonicsSvc" elementFormDefault="qualified" targetNamespace="http://schemas.datacontract.org/2004/07/PonicsSvc" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import schemaLocation="http://msrponics.cloudapp.net/PonicsService.svc?xsd=xsd3" namespace="http://schemas.datacontract.org/2004/07/Microsoft.WindowsAzure.Storage.Table" />
+  <xs:import schemaLocation="http://msrponics.cloudapp.net/PonicsService.svc?xsd=xsd4" namespace="http://schemas.datacontract.org/2004/07/System" />
+  <xs:complexType name="CompositeType">
+    <xs:sequence>
+      <xs:element minOccurs="0" name="BoolValue" type="xs:boolean" />
+      <xs:element minOccurs="0" name="StringValue" nillable="true" type="xs:string" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="CompositeType" nillable="true" type="tns:CompositeType" />
+  <xs:complexType name="ArrayOfPonicsService.SensorsReading">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="PonicsService.SensorsReading" nillable="true" type="tns:PonicsService.SensorsReading" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="ArrayOfPonicsService.SensorsReading" nillable="true" type="tns:ArrayOfPonicsService.SensorsReading" />
+  <xs:complexType name="PonicsService.SensorsReading">
+    <xs:complexContent mixed="false">
+      <xs:extension xmlns:q1="http://schemas.datacontract.org/2004/07/Microsoft.WindowsAzure.Storage.Table" base="q1:TableEntity">
+        <xs:sequence>
+          <xs:element minOccurs="0" name="ContainerName" nillable="true" type="xs:string" />
+          <xs:element minOccurs="0" name="CreatedAt" type="xs:dateTime" />
+          <xs:element minOccurs="0" name="Deleted" type="xs:boolean" />
+          <xs:element minOccurs="0" name="MeasureName" nillable="true" type="xs:string" />
+          <xs:element minOccurs="0" name="MeasureType" nillable="true" type="xs:string" />
+          <xs:element minOccurs="0" name="Notes" nillable="true" type="xs:string" />
+          <xs:element minOccurs="0" name="RawValues" nillable="true" type="xs:string" />
+          <xs:element minOccurs="0" name="Reading" type="xs:double" />
+          <xs:element minOccurs="0" name="ReadingAsString" nillable="true" type="xs:string" />
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:element name="PonicsService.SensorsReading" nillable="true" type="tns:PonicsService.SensorsReading" />
+  <xs:complexType name="PonicsService.PonicsFishLocation">
+    <xs:sequence>
+      <xs:element minOccurs="0" name="FishId" nillable="true" type="xs:string" />
+      <xs:element xmlns:q2="http://schemas.datacontract.org/2004/07/System" minOccurs="0" name="FishLocationDateTime" type="q2:DateTimeOffset" />
+      <xs:element minOccurs="0" name="XPos" type="xs:double" />
+      <xs:element minOccurs="0" name="YPos" type="xs:double" />
+      <xs:element minOccurs="0" name="ZPos" type="xs:double" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="PonicsService.PonicsFishLocation" nillable="true" type="tns:PonicsService.PonicsFishLocation" />
+  <xs:complexType name="ArrayOfPonicsService.PonicsFishLocation">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="PonicsService.PonicsFishLocation" nillable="true" type="tns:PonicsService.PonicsFishLocation" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="ArrayOfPonicsService.PonicsFishLocation" nillable="true" type="tns:ArrayOfPonicsService.PonicsFishLocation" />
+  <xs:complexType name="PonicsService.SeneyeSensorReading">
+    <xs:sequence>
+      <xs:element minOccurs="0" name="Avg" type="xs:double" />
+      <xs:element minOccurs="0" name="AvgAsString" nillable="true" type="xs:string" />
+      <xs:element minOccurs="0" name="Critical_In" nillable="true" type="xs:string" />
+      <xs:element minOccurs="0" name="InstallationName" nillable="true" type="xs:string" />
+      <xs:element minOccurs="0" name="MeasureName" nillable="true" type="xs:string" />
+      <xs:element minOccurs="0" name="Reading" type="xs:double" />
+      <xs:element minOccurs="0" name="ReadingAsString" nillable="true" type="xs:string" />
+      <xs:element xmlns:q3="http://schemas.datacontract.org/2004/07/System" minOccurs="0" name="ReadingDateTimeOffset" type="q3:DateTimeOffset" />
+      <xs:element minOccurs="0" name="SeneyeDateTimeTicks" type="xs:long" />
+      <xs:element minOccurs="0" name="Status" nillable="true" type="xs:string" />
+      <xs:element minOccurs="0" name="Trend" nillable="true" type="xs:string" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="PonicsService.SeneyeSensorReading" nillable="true" type="tns:PonicsService.SeneyeSensorReading" />
+</xs:schema>

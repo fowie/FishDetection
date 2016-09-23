@@ -6,6 +6,8 @@
 #include "opencv2/highgui.hpp"
 #include <stdio.h>
 #include <iostream>
+#include <cpprest/json.h>
+#include <Windows.h>
 
 #define USE_CUSTOM_MASK
 #define TOP_TANK_MASK_IMAGE_FILENAME "D:\\Share\\TopTankMask.bmp"
@@ -14,6 +16,8 @@
 
 using namespace std;
 using namespace cv;
+using namespace utility;
+using namespace web;
 
 static void help()
 {
@@ -133,6 +137,7 @@ int main(int argc, const char** argv)
 
 		int minContourLen = 30;
 		bool oneFishDone = false;
+		vector<vector<Point>> goodFish;
 		for (int i = 0; i< contours.size(); i++)
 		{
 			double area = contourArea( contours[i], false);
@@ -149,7 +154,6 @@ int main(int argc, const char** argv)
 				cv::drawMarker(img0, mc, Scalar(255, 0, 0), cv::MarkerTypes::MARKER_STAR, 10);
 				// if the center of mass is within the bounding box of the tank bottom, I already know it's not a reflection
 				vector<vector<Point>> possiblyBadFish;
-				vector<vector<Point>> goodFish;
 				if (cv::pointPolygonTest(tankBottom, mc, false) < 0)  // possibly a reflection
 				{
 					drawContours(img0, contours, i, Scalar(255, 0, 255), 2, 8, hierarchy, 0, Point());
@@ -202,6 +206,35 @@ int main(int argc, const char** argv)
 		}
 		cv::drawContours(img0, bottomContours, -1, Scalar(0, 255, 0));
 
+		// create the json to submit
+		// this is expected format:
+		/* [{"FishId":"RedFish","FishLocationDateTime":{"DateTime":"\/Date(-62135596800000)\/","OffsetMinutes":0},"XPos":1.234,"YPos":2.342,"ZPos":2.4445},{"FishId":"RedFish","FishLocationDateTime":{"DateTime":"\/Date(-62135596800000)\/","OffsetMinutes":0},"XPos":1.234,"YPos":2.342,"ZPos":2.4445}] */
+		
+		json::value jsonArray = json::value::array(goodFish.size());
+		for (int i = 0; i < goodFish.size(); i++)
+		{
+			Moments m = moments(goodFish[i], false);
+			Point2f mc = Point2f(m.m10 / m.m00, m.m01 / m.m00);
+			json::value fish;
+			fish[L"FishId"] = json::value::string(U("RandomFish"));
+			fish[L"XPos"] = json::value::number(mc.x);
+			fish[L"YPos"] = json::value::number(mc.y);
+			fish[L"ZPos"] = json::value::number(0.0);
+			jsonArray[i] = fish;
+		}
+		utility::stringstream_t stream;
+		utility::string_t jsonString = jsonArray.serialize();
+		int size_needed = WideCharToMultiByte(CP_UTF8, 0, jsonString.c_str(), jsonString.length(), NULL, 0, NULL, NULL);
+		std::string strTo(size_needed, 0);
+		WideCharToMultiByte(CP_UTF8, 0, jsonString.c_str(), jsonString.length(), &strTo[0], size_needed, NULL, NULL);
+
+		char* command = (char*)malloc(strTo.size() + 17);
+		strcpy(command, "FishData.exe \"");
+		command = strcat(command, strTo.c_str());
+		strcat(command, "\"");
+		printf("Command: [%s]\n", command);
+		system(command);
+		
 		waitKey(0);
 
 

@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:tns="http://tempuri.org/" elementFormDefault="qualified" targetNamespace="http://tempuri.org/" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import schemaLocation="http://msrponics.cloudapp.net/PonicsService.svc?xsd=xsd2" namespace="http://schemas.datacontract.org/2004/07/PonicsSvc" />
+  <xs:element name="GetData">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" name="value" type="xs:int" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="GetDataResponse">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" name="GetDataResult" nillable="true" type="xs:string" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="GetDataUsingDataContract">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element xmlns:q1="http://schemas.datacontract.org/2004/07/PonicsSvc" minOccurs="0" name="composite" nillable="true" type="q1:CompositeType" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="GetDataUsingDataContractResponse">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element xmlns:q2="http://schemas.datacontract.org/2004/07/PonicsSvc" minOccurs="0" name="GetDataUsingDataContractResult" nillable="true" type="q2:CompositeType" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="GetReadingsSinceDateTime">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" name="InstallationName" nillable="true" type="xs:string" />
+        <xs:element minOccurs="0" name="SinceThisDateTime" type="xs:dateTime" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="GetReadingsSinceDateTimeResponse">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element xmlns:q3="http://schemas.datacontract.org/2004/07/PonicsSvc" minOccurs="0" name="GetReadingsSinceDateTimeResult" nillable="true" type="q3:ArrayOfPonicsService.SensorsReading" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="LogFlorenceAction">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" name="FlorenceInstance" nillable="true" type="xs:string" />
+        <xs:element minOccurs="0" name="Action" nillable="true" type="xs:string" />
+        <xs:element minOccurs="0" name="UserEntry" nillable="true" type="xs:string" />
+        <xs:element minOccurs="0" name="TranslatedString" nillable="true" type="xs:string" />
+        <xs:element minOccurs="0" name="PlantSays" nillable="true" type="xs:string" />
+        <xs:element minOccurs="0" name="LightsToFlorence" nillable="true" type="xs:string" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="LogFlorenceActionResponse">
+    <xs:complexType>
+      <xs:sequence />
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="LogFlorenceSensors">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" name="FlorenceInstance" nillable="true" type="xs:string" />
+        <xs:element minOccurs="0" name="Humidity" type="xs:double" />
+        <xs:element minOccurs="0" name="Gas" type="xs:double" />
+        <xs:element minOccurs="0" name="TemperatureC" type="xs:double" />
+        <xs:element minOccurs="0" name="Light" type="xs:double" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="LogFlorenceSensorsResponse">
+    <xs:complexType>
+      <xs:sequence />
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="LogSingleFishLocation">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" name="InstallationName" nillable="true" type="xs:string" />
+        <xs:element xmlns:q4="http://schemas.datacontract.org/2004/07/PonicsSvc" minOccurs="0" name="pfl" nillable="true" type="q4:PonicsService.PonicsFishLocation" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="LogSingleFishLocationResponse">
+    <xs:complexType>
+      <xs:sequence />
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="LogBatchFishLocation">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" name="InstallationName" nillable="true" type="xs:string" />
+        <xs:element xmlns:q5="http://schemas.datacontract.org/2004/07/PonicsSvc" minOccurs="0" name="pfls" nillable="true" type="q5:ArrayOfPonicsService.PonicsFishLocation" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="LogBatchFishLocationResponse">
+    <xs:complexType>
+      <xs:sequence />
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="LogSingleSeneyeReading">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element xmlns:q6="http://schemas.datacontract.org/2004/07/PonicsSvc" minOccurs="0" name="ssr" nillable="true" type="q6:PonicsService.SeneyeSensorReading" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="LogSingleSeneyeReadingResponse">
+    <xs:complexType>
+      <xs:sequence />
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="LogSeneyeSensorData">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" name="SensyeJSON_String" nillable="true" type="xs:string" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="LogSeneyeSensorDataResponse">
+    <xs:complexType>
+      <xs:sequence />
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="GetTrue">
+    <xs:complexType>
+      <xs:sequence />
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="GetTrueResponse">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" name="GetTrueResult" nillable="true" type="xs:string" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

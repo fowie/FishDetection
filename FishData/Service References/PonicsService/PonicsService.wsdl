@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:wsap="http://schemas.xmlsoap.org/ws/2004/08/addressing/policy" xmlns:wsa10="http://www.w3.org/2005/08/addressing" xmlns:tns="http://tempuri.org/" xmlns:msc="http://schemas.microsoft.com/ws/2005/12/wsdl/contract" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:wsx="http://schemas.xmlsoap.org/ws/2004/09/mex" xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy" xmlns:wsam="http://www.w3.org/2007/05/addressing/metadata" xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" xmlns:xsd="http://www.w3.org/2001/XMLSchema" name="PonicsService" targetNamespace="http://tempuri.org/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:types>
+    <xsd:schema targetNamespace="http://tempuri.org/Imports">
+      <xsd:import schemaLocation="http://msrponics.cloudapp.net/PonicsService.svc?xsd=xsd0" namespace="http://tempuri.org/" />
+      <xsd:import schemaLocation="http://msrponics.cloudapp.net/PonicsService.svc?xsd=xsd1" namespace="http://schemas.microsoft.com/2003/10/Serialization/" />
+      <xsd:import schemaLocation="http://msrponics.cloudapp.net/PonicsService.svc?xsd=xsd2" namespace="http://schemas.datacontract.org/2004/07/PonicsSvc" />
+      <xsd:import schemaLocation="http://msrponics.cloudapp.net/PonicsService.svc?xsd=xsd3" namespace="http://schemas.datacontract.org/2004/07/Microsoft.WindowsAzure.Storage.Table" />
+      <xsd:import schemaLocation="http://msrponics.cloudapp.net/PonicsService.svc?xsd=xsd4" namespace="http://schemas.datacontract.org/2004/07/System" />
+    </xsd:schema>
+  </wsdl:types>
+  <wsdl:message name="IPonicsService_GetData_InputMessage">
+    <wsdl:part name="parameters" element="tns:GetData" />
+  </wsdl:message>
+  <wsdl:message name="IPonicsService_GetData_OutputMessage">
+    <wsdl:part name="parameters" element="tns:GetDataResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPonicsService_GetDataUsingDataContract_InputMessage">
+    <wsdl:part name="parameters" element="tns:GetDataUsingDataContract" />
+  </wsdl:message>
+  <wsdl:message name="IPonicsService_GetDataUsingDataContract_OutputMessage">
+    <wsdl:part name="parameters" element="tns:GetDataUsingDataContractResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPonicsService_GetReadingsSinceDateTime_InputMessage">
+    <wsdl:part name="parameters" element="tns:GetReadingsSinceDateTime" />
+  </wsdl:message>
+  <wsdl:message name="IPonicsService_GetReadingsSinceDateTime_OutputMessage">
+    <wsdl:part name="parameters" element="tns:GetReadingsSinceDateTimeResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPonicsService_LogFlorenceAction_InputMessage">
+    <wsdl:part name="parameters" element="tns:LogFlorenceAction" />
+  </wsdl:message>
+  <wsdl:message name="IPonicsService_LogFlorenceAction_OutputMessage">
+    <wsdl:part name="parameters" element="tns:LogFlorenceActionResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPonicsService_LogFlorenceSensors_InputMessage">
+    <wsdl:part name="parameters" element="tns:LogFlorenceSensors" />
+  </wsdl:message>
+  <wsdl:message name="IPonicsService_LogFlorenceSensors_OutputMessage">
+    <wsdl:part name="parameters" element="tns:LogFlorenceSensorsResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPonicsService_LogSingleFishLocation_InputMessage">
+    <wsdl:part name="parameters" element="tns:LogSingleFishLocation" />
+  </wsdl:message>
+  <wsdl:message name="IPonicsService_LogSingleFishLocation_OutputMessage">
+    <wsdl:part name="parameters" element="tns:LogSingleFishLocationResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPonicsService_LogBatchFishLocation_InputMessage">
+    <wsdl:part name="parameters" element="tns:LogBatchFishLocation" />
+  </wsdl:message>
+  <wsdl:message name="IPonicsService_LogBatchFishLocation_OutputMessage">
+    <wsdl:part name="parameters" element="tns:LogBatchFishLocationResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPonicsService_LogSingleSeneyeReading_InputMessage">
+    <wsdl:part name="parameters" element="tns:LogSingleSeneyeReading" />
+  </wsdl:message>
+  <wsdl:message name="IPonicsService_LogSingleSeneyeReading_OutputMessage">
+    <wsdl:part name="parameters" element="tns:LogSingleSeneyeReadingResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPonicsService_LogSeneyeSensorData_InputMessage">
+    <wsdl:part name="parameters" element="tns:LogSeneyeSensorData" />
+  </wsdl:message>
+  <wsdl:message name="IPonicsService_LogSeneyeSensorData_OutputMessage">
+    <wsdl:part name="parameters" element="tns:LogSeneyeSensorDataResponse" />
+  </wsdl:message>
+  <wsdl:message name="IPonicsService_GetTrue_InputMessage">
+    <wsdl:part name="parameters" element="tns:GetTrue" />
+  </wsdl:message>
+  <wsdl:message name="IPonicsService_GetTrue_OutputMessage">
+    <wsdl:part name="parameters" element="tns:GetTrueResponse" />
+  </wsdl:message>
+  <wsdl:portType name="IPonicsService">
+    <wsdl:operation name="GetData">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPonicsService/GetData" message="tns:IPonicsService_GetData_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPonicsService/GetDataResponse" message="tns:IPonicsService_GetData_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="GetDataUsingDataContract">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPonicsService/GetDataUsingDataContract" message="tns:IPonicsService_GetDataUsingDataContract_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPonicsService/GetDataUsingDataContractResponse" message="tns:IPonicsService_GetDataUsingDataContract_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="GetReadingsSinceDateTime">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPonicsService/GetReadingsSinceDateTime" message="tns:IPonicsService_GetReadingsSinceDateTime_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPonicsService/GetReadingsSinceDateTimeResponse" message="tns:IPonicsService_GetReadingsSinceDateTime_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="LogFlorenceAction">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPonicsService/LogFlorenceAction" message="tns:IPonicsService_LogFlorenceAction_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPonicsService/LogFlorenceActionResponse" message="tns:IPonicsService_LogFlorenceAction_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="LogFlorenceSensors">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPonicsService/LogFlorenceSensors" message="tns:IPonicsService_LogFlorenceSensors_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPonicsService/LogFlorenceSensorsResponse" message="tns:IPonicsService_LogFlorenceSensors_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="LogSingleFishLocation">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPonicsService/LogSingleFishLocation" message="tns:IPonicsService_LogSingleFishLocation_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPonicsService/LogSingleFishLocationResponse" message="tns:IPonicsService_LogSingleFishLocation_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="LogBatchFishLocation">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPonicsService/LogBatchFishLocation" message="tns:IPonicsService_LogBatchFishLocation_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPonicsService/LogBatchFishLocationResponse" message="tns:IPonicsService_LogBatchFishLocation_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="LogSingleSeneyeReading">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPonicsService/LogSingleSeneyeReading" message="tns:IPonicsService_LogSingleSeneyeReading_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPonicsService/LogSingleSeneyeReadingResponse" message="tns:IPonicsService_LogSingleSeneyeReading_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="LogSeneyeSensorData">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPonicsService/LogSeneyeSensorData" message="tns:IPonicsService_LogSeneyeSensorData_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPonicsService/LogSeneyeSensorDataResponse" message="tns:IPonicsService_LogSeneyeSensorData_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation name="GetTrue">
+      <wsdl:input wsaw:Action="http://tempuri.org/IPonicsService/GetTrue" message="tns:IPonicsService_GetTrue_InputMessage" />
+      <wsdl:output wsaw:Action="http://tempuri.org/IPonicsService/GetTrueResponse" message="tns:IPonicsService_GetTrue_OutputMessage" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="BasicHttpBinding_IPonicsService" type="tns:IPonicsService">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="GetData">
+      <soap:operation soapAction="http://tempuri.org/IPonicsService/GetData" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetDataUsingDataContract">
+      <soap:operation soapAction="http://tempuri.org/IPonicsService/GetDataUsingDataContract" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetReadingsSinceDateTime">
+      <soap:operation soapAction="http://tempuri.org/IPonicsService/GetReadingsSinceDateTime" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="LogFlorenceAction">
+      <soap:operation soapAction="http://tempuri.org/IPonicsService/LogFlorenceAction" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="LogFlorenceSensors">
+      <soap:operation soapAction="http://tempuri.org/IPonicsService/LogFlorenceSensors" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="LogSingleFishLocation">
+      <soap:operation soapAction="http://tempuri.org/IPonicsService/LogSingleFishLocation" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="LogBatchFishLocation">
+      <soap:operation soapAction="http://tempuri.org/IPonicsService/LogBatchFishLocation" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="LogSingleSeneyeReading">
+      <soap:operation soapAction="http://tempuri.org/IPonicsService/LogSingleSeneyeReading" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="LogSeneyeSensorData">
+      <soap:operation soapAction="http://tempuri.org/IPonicsService/LogSeneyeSensorData" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetTrue">
+      <soap:operation soapAction="http://tempuri.org/IPonicsService/GetTrue" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="PonicsService">
+    <wsdl:port name="BasicHttpBinding_IPonicsService" binding="tns:BasicHttpBinding_IPonicsService">
+      <soap:address location="http://msrponics.cloudapp.net/PonicsService.svc" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

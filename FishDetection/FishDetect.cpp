@@ -19,6 +19,9 @@ using namespace cv;
 using namespace utility;
 using namespace web;
 
+#define SMOOTHMASK false
+
+
 static void help()
 {
  printf("\nBackground segmentation.\n"
@@ -36,6 +39,138 @@ const char* keys =
     "{fn file_name|../data/tree.avi | movie file        }"
 };
 
+vector<vector<Point>>* ProcessTopImage(Mat img, Ptr<BackgroundSubtractor> bg_model, Mat fgmask, Mat fgimg)
+{
+	vector<Point> tankBottom(6);
+	tankBottom[0] = Point(480, 293);
+	tankBottom[1] = Point(746, 258);
+	tankBottom[2] = Point(911, 475);
+	tankBottom[3] = Point(803, 731);
+	tankBottom[4] = Point(539, 758);
+	tankBottom[5] = Point(373, 539);
+	vector<vector<Point>> bottomContours(1);
+	bottomContours[0] = tankBottom;
+
+	vector<Point[2]> tankWalls(6);
+	tankWalls[0][0] = tankBottom[0];
+	tankWalls[0][1] = tankBottom[1];
+	tankWalls[1][0] = tankBottom[1];
+	tankWalls[1][1] = tankBottom[2];
+	tankWalls[2][0] = tankBottom[2];
+	tankWalls[2][1] = tankBottom[3];
+	tankWalls[3][0] = tankBottom[3];
+	tankWalls[3][1] = tankBottom[4];
+	tankWalls[4][0] = tankBottom[4];
+	tankWalls[4][1] = tankBottom[5];
+	tankWalls[5][0] = tankBottom[5];
+	tankWalls[5][1] = tankBottom[0];
+
+	// Bright areas
+	Mat bands[3];
+	split(img, bands);
+	Mat lights;
+	threshold(bands[1], lights, 150, 255, THRESH_BINARY_INV);
+	imshow("Lights", lights);
+
+	if (fgimg.empty())
+		fgimg.create(img.size(), img.type());
+
+	//update the model
+	bg_model->apply(img, fgmask, -1);
+	if (SMOOTHMASK)  {
+		GaussianBlur(fgmask, fgmask, Size(11, 11), 3.5, 3.5);
+		threshold(fgmask, fgmask, 10, 255, THRESH_BINARY);
+	}
+
+	Mat fgmaskMed;
+	medianBlur(fgmask, fgmaskMed, 3);
+
+	fgimg = Scalar::all(0);
+	img.copyTo(fgimg, fgmaskMed);
+
+	Mat bgimg;
+	bg_model->getBackgroundImage(bgimg);
+	fgmask = fgmask & lights;
+
+	// Render contours on the image.
+	vector<vector<Point> > contours;
+	vector<Vec4i> hierarchy;
+	findContours(fgmask, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+
+	int minContourLen = 30;
+	bool oneFishDone = false;
+	vector<vector<Point>>* goodFish = new vector<vector<Point>>();
+	for (int i = 0; i< contours.size(); i++)
+	{
+		double area = contourArea(contours[i], false);
+		if (area > 30)
+		{
+			/* TO DO
+			For each blob I've detected, draw a line perpendicular to each tank edge (mirror).  Search those lines for blobs
+			If you find one additional blob along this line, remove it from the list
+			If you find two (or more) blobs along this line, remove the one that is closest in size to your own
+			*/
+			// Get contour's center of mass
+			Moments m = moments(contours[i], false);
+			Point2f mc = Point2f(m.m10 / m.m00, m.m01 / m.m00);
+			cv::drawMarker(img, mc, Scalar(255, 0, 0), cv::MarkerTypes::MARKER_STAR, 10);
+			// if the center of mass is within the bounding box of the tank bottom, I already know it's not a reflection
+			vector<vector<Point>> possiblyBadFish;
+			if (cv::pointPolygonTest(tankBottom, mc, false) < 0)  // possibly a reflection
+			{
+				drawContours(img, contours, i, Scalar(255, 0, 255), 2, 8, hierarchy, 0, Point());
+				possiblyBadFish.push_back(contours[i]);
+
+			}
+			else  // guaranteed good fish
+			{
+				drawContours(img, contours, i, Scalar(0, 255, 255), 2, 8, hierarchy, 0, Point());
+				goodFish->push_back(contours[i]);
+				if (!oneFishDone)
+				{
+					// for each tank edge, compute the perpendicular line to each edge of the tank
+					for (int i = 0; i < tankWalls.size(); i++)
+					{
+						// Step 1, compute the angle between the fish point and the closest point I have on the line
+						float xd = mc.x - tankWalls[i][0].x;
+						float yd = mc.y - tankWalls[i][0].y;
+						float dist[3];
+						dist[0] = sqrt(xd*xd + yd*yd);
+						xd = mc.x - tankWalls[i][1].x;
+						yd = mc.y - tankWalls[i][1].y;
+						dist[1] = sqrt(xd*xd + yd*yd);
+						xd = tankWalls[i][0].x - tankWalls[i][1].x;
+						yd = tankWalls[i][0].y - tankWalls[i][1].y;
+						dist[2] = sqrt(xd*xd + yd*yd);
+						int nearest = dist[0] <= dist[1] ? 0 : 1;
+						int farthest = nearest == 0 ? 1 : 0;
+						float angle = acos((dist[2] * dist[2] + dist[nearest] * dist[nearest] - dist[farthest] * dist[farthest]) / (2 * dist[2] * dist[nearest]));
+						Point2f nearestPoint = Point2f(tankWalls[i][nearest]);
+						Point2f farthestPoint = Point2f(tankWalls[i][farthest]);
+						// if that angle is > 90, I know the perpendicular line intersects outside my two points
+						if (angle > CV_PI / 2 || angle < -1 * CV_PI / 2)
+						{
+							continue;
+						}
+						// Step 2, get the new point along the line where my fish point would intersect
+						float d = cos(angle)*dist[nearest];
+						Point2f v = nearestPoint - farthestPoint;
+						float mag = sqrt(v.x * v.x + v.y * v.y);
+						Point2f u = v / mag;
+						Point2f pointOnLine = nearestPoint - d*u;
+						line(img, mc, pointOnLine, CvScalar(0, 128, 255));
+					}
+					//oneFishDone = true;
+				}
+
+			}
+		}
+	}
+	cv::drawContours(img, bottomContours, -1, Scalar(0, 255, 0));
+
+	return goodFish;
+}
+
 //this is a sample for foreground detection functions
 int main(int argc, const char** argv)
 {
@@ -49,7 +184,6 @@ int main(int argc, const char** argv)
 	}
 
     bool useCamera = false;
-	bool smoothMask = false; 
     string file = argv[1];
 	string outfile = argv[2];
     string method = "mog";
@@ -67,153 +201,30 @@ int main(int argc, const char** argv)
 
     namedWindow("image");
 
-    Ptr<BackgroundSubtractor> bg_model = method == "knn" ?
+    Ptr<BackgroundSubtractor> bg_model_top_tank = method == "knn" ?
             createBackgroundSubtractorKNN().dynamicCast<BackgroundSubtractor>() :
             createBackgroundSubtractorMOG2().dynamicCast<BackgroundSubtractor>();
 
-	Mat img0, img0gray, img1, fgmask, fgmaskMed, fgimg, TopTankMask, tmp, mask;
+	Mat img0, fgmask_top_tank, fgmask_side_tank, fgimg_top_tank, fgimg_side_tank;
 	
 	int frameNo = 0;
-
-	vector<Point> tankBottom(6);
-	tankBottom[0] = Point(480, 293);
-	tankBottom[1] = Point(746, 258);
-	tankBottom[2] = Point(911, 475);
-	tankBottom[3] = Point(803, 731);
-	tankBottom[4] = Point(539, 758);
-	tankBottom[5] = Point(373, 539);
-	vector<vector<Point>> bottomContours(1);
-	bottomContours[0] = tankBottom;
-	
-	vector<Point[2]> tankWalls(6);
-	tankWalls[0][0] = tankBottom[0];
-	tankWalls[0][1] = tankBottom[1];
-	tankWalls[1][0] = tankBottom[1];
-	tankWalls[1][1] = tankBottom[2];
-	tankWalls[2][0] = tankBottom[2];
-	tankWalls[2][1] = tankBottom[3];
-	tankWalls[3][0] = tankBottom[3];
-	tankWalls[3][1] = tankBottom[4];
-	tankWalls[4][0] = tankBottom[4];
-	tankWalls[4][1] = tankBottom[5];
-	tankWalls[5][0] = tankBottom[5];
-	tankWalls[5][1] = tankBottom[0];
 
     for(;;)
     {
         cap >> img0;
 		if (img0.empty()) break;
 
-		// Bright areas
-		Mat bands[3];
-		split(img0, bands);
-		Mat lights;
-		threshold(bands[1], lights, 150, 255, THRESH_BINARY_INV);
-		imshow("Lights", lights);
-
-        if( fgimg.empty() )
-          fgimg.create(img0.size(), img0.type());
-
-        //update the model
-        bg_model->apply(img0, fgmask, -1);
-		if (smoothMask)  {
-            GaussianBlur(fgmask, fgmask, Size(11, 11), 3.5, 3.5);
-            threshold(fgmask, fgmask, 10, 255, THRESH_BINARY);
-        }
-
-		medianBlur(fgmask, fgmaskMed, 3);
-
-        fgimg = Scalar::all(0);
-        img0.copyTo(fgimg, fgmaskMed);
-
-        Mat bgimg;
-        bg_model->getBackgroundImage(bgimg);
-		fgmask = fgmask & lights;
-
-		// Render contours on the image.
-		vector<vector<Point> > contours;
-		vector<Vec4i> hierarchy;
-		findContours(fgmask, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
-
-		int minContourLen = 30;
-		bool oneFishDone = false;
-		vector<vector<Point>> goodFish;
-		for (int i = 0; i< contours.size(); i++)
-		{
-			double area = contourArea( contours[i], false);
-			if (area > 30)
-			{
-				/* TO DO
-				For each blob I've detected, draw a line perpendicular to each tank edge (mirror).  Search those lines for blobs
-				If you find one additional blob along this line, remove it from the list
-				If you find two (or more) blobs along this line, remove the one that is closest in size to your own
-				*/
-				// Get contour's center of mass
-				Moments m = moments(contours[i], false);
-				Point2f mc = Point2f(m.m10 / m.m00, m.m01 / m.m00);
-				cv::drawMarker(img0, mc, Scalar(255, 0, 0), cv::MarkerTypes::MARKER_STAR, 10);
-				// if the center of mass is within the bounding box of the tank bottom, I already know it's not a reflection
-				vector<vector<Point>> possiblyBadFish;
-				if (cv::pointPolygonTest(tankBottom, mc, false) < 0)  // possibly a reflection
-				{
-					drawContours(img0, contours, i, Scalar(255, 0, 255), 2, 8, hierarchy, 0, Point());
-					possiblyBadFish.push_back(contours[i]);
-
-				}
-				else  // guaranteed good fish
-				{
-					drawContours(img0, contours, i, Scalar(0, 255, 255), 2, 8, hierarchy, 0, Point());
-					goodFish.push_back(contours[i]);
-					if (!oneFishDone)
-					{
-						// for each tank edge, compute the perpendicular line to each edge of the tank
-						for (int i = 0; i < tankWalls.size(); i++)
-						{
-							// Step 1, compute the angle between the fish point and the closest point I have on the line
-							float xd = mc.x - tankWalls[i][0].x;
-							float yd = mc.y - tankWalls[i][0].y;
-							float dist[3];
-							dist[0] = sqrt(xd*xd + yd*yd);
-							xd = mc.x - tankWalls[i][1].x;
-							yd = mc.y - tankWalls[i][1].y;
-							dist[1] = sqrt(xd*xd + yd*yd);
-							xd = tankWalls[i][0].x - tankWalls[i][1].x;
-							yd = tankWalls[i][0].y - tankWalls[i][1].y;
-							dist[2] = sqrt(xd*xd + yd*yd);
-							int nearest = dist[0] <= dist[1] ? 0 : 1;
-							int farthest = nearest == 0 ? 1 : 0;
-							float angle = acos((dist[2] * dist[2] + dist[nearest] * dist[nearest] - dist[farthest] * dist[farthest]) / (2 * dist[2] * dist[nearest]));
-							Point2f nearestPoint = Point2f(tankWalls[i][nearest]);
-							Point2f farthestPoint = Point2f(tankWalls[i][farthest]);
-							// if that angle is > 90, I know the perpendicular line intersects outside my two points
-							if (angle > CV_PI / 2 || angle < -1 * CV_PI / 2)
-							{
-								continue;
-							}
-							// Step 2, get the new point along the line where my fish point would intersect
-							float d = cos(angle)*dist[nearest];
-							Point2f v = nearestPoint - farthestPoint;
-							float mag = sqrt(v.x * v.x + v.y * v.y);
-							Point2f u = v / mag;
-							Point2f pointOnLine = nearestPoint - d*u;
-							line(img0, mc, pointOnLine, CvScalar(0, 128, 255));
-						}
-						//oneFishDone = true;
-					}
-
-				}
-			}
-		}
-		cv::drawContours(img0, bottomContours, -1, Scalar(0, 255, 0));
+		vector<vector<Point>>* goodFish = ProcessTopImage(img0, bg_model_top_tank, fgmask_top_tank, fgimg_top_tank);
+		//ProcessSideImage(img1);
 
 		// create the json to submit
 		// this is expected format:
 		/* [{"FishId":"RedFish","FishLocationDateTime":{"DateTime":"\/Date(-62135596800000)\/","OffsetMinutes":0},"XPos":1.234,"YPos":2.342,"ZPos":2.4445},{"FishId":"RedFish","FishLocationDateTime":{"DateTime":"\/Date(-62135596800000)\/","OffsetMinutes":0},"XPos":1.234,"YPos":2.342,"ZPos":2.4445}] */
 		
-		json::value jsonArray = json::value::array(goodFish.size());
-		for (int i = 0; i < goodFish.size(); i++)
+		json::value jsonArray = json::value::array(goodFish->size());
+		for (int i = 0; i < goodFish->size(); i++)
 		{
-			Moments m = moments(goodFish[i], false);
+			Moments m = moments((*goodFish)[i], false);
 			Point2f mc = Point2f(m.m10 / m.m00, m.m01 / m.m00);
 			json::value fish;
 			fish[L"FishId"] = json::value::string(U("RandomFish"));
@@ -242,12 +253,11 @@ int main(int argc, const char** argv)
 		}
 
         imshow("image", img0);
-        //imshow("foreground image", fgimg);
-        //if(!bgimg.empty())  imshow("mean background image", bgimg );
-		imwrite("bgimg.bmp", bgimg);
-		imwrite("out\\out" + std::to_string(frameNo) +".jpg", img0);
+
+		//imwrite("out\\out" + std::to_string(frameNo) +".jpg", img0);
 		frameNo++;
 		
+		delete goodFish;
 
         char k = (char)waitKey(30);
         if( k == 27 ) break;

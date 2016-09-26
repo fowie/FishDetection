@@ -224,20 +224,22 @@ int main(int argc, const char** argv)
 		}
 		utility::stringstream_t stream;
 		utility::string_t jsonString = jsonArray.serialize();
+		std::replace(jsonString.begin(), jsonString.end(), '"', '\'');
 		int size_needed = WideCharToMultiByte(CP_UTF8, 0, jsonString.c_str(), jsonString.length(), NULL, 0, NULL, NULL);
 		std::string strTo(size_needed, 0);
 		WideCharToMultiByte(CP_UTF8, 0, jsonString.c_str(), jsonString.length(), &strTo[0], size_needed, NULL, NULL);
 
-		char* command = (char*)malloc(strTo.size() + 17);
+		char* command = (char*)malloc(strTo.size() + 20);
 		strcpy(command, "FishData.exe \"");
 		command = strcat(command, strTo.c_str());
 		strcat(command, "\"");
-		printf("Command: [%s]\n", command);
-		system(command);
 		
-		waitKey(0);
-
-
+		int key = waitKey(10);
+		if (key == 'A')
+		{
+			printf("Command: [%s]\n", command);
+			system(command);
+		}
 
         imshow("image", img0);
         //imshow("foreground image", fgimg);

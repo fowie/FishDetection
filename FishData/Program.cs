@@ -16,13 +16,6 @@ namespace FishData
         {
             PonicsService.PonicsServiceClient ponicsSvc = new PonicsService.PonicsServiceClient();
 
-            //PonicsService.PonicsServiceClient.EndpointConfiguration endC = new PonicsService.PonicsServiceClient.EndpointConfiguration();
-
-            //endC = PonicsService.PonicsServiceClient.EndpointConfiguration.BasicHttpBinding_IPonicsService;
-
-            if (ponicsSvc == null)
-                ponicsSvc = new PonicsService.PonicsServiceClient();
-
             try
             {
                 await ponicsSvc.LogBatchFishLocationAsync(InstallationName, fishLocs);
@@ -40,12 +33,13 @@ namespace FishData
         {
             if(args.Length < 1)
             {
-                Console.WriteLine("Usage: FishData.exe \"(fishx,fishy,fishz), (fishx,fishy,fishz)}\"");
+                Console.WriteLine("Usage: FishData.exe \"[{\"FishId\":\"RedFish\",\"FishLocationDateTime\":{\"DateTime\":\"Date(-62135596800000)\",\"OffsetMinutes\":0},\"XPos\":1.234,\"YPos\":2.342,\"ZPos\":2.4445},{\"FishId\":\"BlueFish\",\"FishLocationDateTime\":{\"DateTime\":\"\\/Date(-62135596800000)\\/\",\"OffsetMinutes\":0},\"XPos\":1.234,\"YPos\":2.342,\"ZPos\":2.4445}]\"");
                 return;
             }
             // parse out the locations
             string locationString = args[0];
-            Console.WriteLine("Using [" + locationString + "] as my data\n");
+            locationString = locationString.Replace('\'', '"');
+            //Console.WriteLine("Using [" + locationString + "] as my data\n");
             PonicsService.PonicsServicePonicsFishLocation[] fishLocations;
             DataContractJsonSerializer jsonSerializer = new DataContractJsonSerializer(typeof(PonicsService.PonicsServicePonicsFishLocation[]));
             MemoryStream stream = new MemoryStream(Encoding.UTF8.GetBytes(locationString));
@@ -53,6 +47,7 @@ namespace FishData
             fishLocations = objResponse as PonicsService.PonicsServicePonicsFishLocation[];
             foreach(var loc in fishLocations)
             {
+                loc.FishLocationDateTime = DateTime.Now;                
                 PrintLocation(loc);
             }
 

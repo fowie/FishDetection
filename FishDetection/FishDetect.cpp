@@ -8,11 +8,17 @@
 #include <iostream>
 #include <cpprest/json.h>
 #include <Windows.h>
+#include "FlyCapture2.h"
+
 
 using namespace std;
 using namespace cv;
 using namespace utility;
 using namespace web;
+using namespace FlyCapture2;
+
+#define TOP_CAMERA_SERIAL_NUMBER 15322821
+#define SIDE_CAMERA_SERIAL_NUMBER 15322827
 
 #define SMOOTHMASK false
 #define LOAD_BG_MODELS false
@@ -35,6 +41,32 @@ const char* keys =
     "{s  smooth   |         | smooth the mask }"
     "{fn file_name|../data/tree.avi | movie file        }"
 };
+
+void OnTopImageGrabbed(Image* pImage, const void* pCallbackData)
+{
+
+}
+void OnSideImageGrabbed(Image* pImage, const void* pCallbackData)
+{
+
+}
+
+void GetImageFromCamera(Camera* cam, Mat* img)
+{
+	Image monoImage;
+	FlyCapture2::Error error = cam->RetrieveBuffer(&monoImage);
+	if (error != PGRERROR_OK)
+	{
+		error.PrintErrorTrace();
+		return;
+	}
+
+	// convert to OpenCV Mat
+	unsigned int rowBytes = (double)monoImage.GetReceivedDataSize() / (double)monoImage.GetRows();
+	cv::Mat(monoImage.GetRows(), monoImage.GetCols(), CV_8UC3, monoImage.GetData(), rowBytes).copyTo(*img);  // Not sure if this is necessary or if I could just return the new Mat, or define the input mat better and just set data...
+	
+	return;
+}
 
 vector<vector<Point>>* ProcessSideImage(Mat img, Ptr<BackgroundSubtractor> bg_model, Mat* fgmask, Mat fgimg)
 {
@@ -263,10 +295,12 @@ vector<vector<Point>>* ProcessTopImage(Mat img, Ptr<BackgroundSubtractor> bg_mod
 //this is a sample for foreground detection functions
 int main(int argc, const char** argv)
 {
+	bool useCamera = false;
+	
 	if (argc != 4)
 	{
 		help();
-
+		useCamera = true;
 		fprintf(stderr, "Usage: FishDetect <path to top movie file> <path to side movie file> <path to output movie file> \nPress [Enter] to exit.\n");
 		fprintf(stderr, "Got:\n");
 		for (int i = 0; i < argc; i++)
@@ -277,41 +311,23 @@ int main(int argc, const char** argv)
 		return -1;
 	}
 
-
-
-    bool useCamera = false;
     string file_top = argv[1];
 	string file_side = argv[2];
 	string outfile = argv[3];
     string method = "mog";
     VideoCapture cap_top;
 	VideoCapture cap_side;
+	Camera* camera_top = NULL;
+	Camera* camera_side = NULL;
 
-	if (useCamera)
-	{
-		cap_top.open(0);
-		cap_side.open(1);
-	}
-	else
-	{
-		cap_top.open(file_top.c_str());
-		cap_side.open(file_side.c_str());
-	}
-
-    if( !cap_top.isOpened() || !cap_side.isOpened())	
-	{    
-		printf("can not open camera or video file %s and %s\n", file_top.c_str(), file_side.c_str());
-		getchar();
-		return -1;   
-	}
-
-    namedWindow("Side Camera");
+	namedWindow("Side Camera");
 	namedWindow("Top Camera");
 	moveWindow("Side Camera", 0, 0);
 	moveWindow("Top Camera", 1280, 0);
-    Ptr<BackgroundSubtractor> bg_model_top_tank = method == "knn" ?
-            createBackgroundSubtractorKNN().dynamicCast<BackgroundSubtractor>() :
-            createBackgroundSubtractorMOG2().dynamicCast<BackgroundSubtractor>();
+
+	Ptr<BackgroundSubtractor> bg_model_top_tank = method == "knn" ?
+		createBackgroundSubtractorKNN().dynamicCast<BackgroundSubtractor>() :
+		createBackgroundSubtractorMOG2().dynamicCast<BackgroundSubtractor>();
 	Ptr<BackgroundSubtractor> bg_model_side_tank = method == "knn" ?
 		createBackgroundSubtractorKNN().dynamicCast<BackgroundSubtractor>() :
 		createBackgroundSubtractorMOG2().dynamicCast<BackgroundSubtractor>();
@@ -319,13 +335,143 @@ int main(int argc, const char** argv)
 	Mat topimg, sideimg, fgmask_top_tank, fgmask_side_tank, fgimg_top_tank, fgimg_side_tank;
 	int frameNo = 0;
 
+	if (useCamera)
+	{
+		// Get available pointgrey cameras
+		BusManager busMgr;
+		unsigned int numCameras;
+		FlyCapture2::Error error = busMgr.GetNumOfCameras(&numCameras);
+		if (error != PGRERROR_OK)
+		{
+			error.PrintErrorTrace();
+			return -1;
+		}
+
+		cout << "Number of cameras detected: " << numCameras << endl;
+
+		if (numCameras < 2)
+		{
+			cout << "Insufficient number of cameras... exiting" << endl;
+			return -1;
+		}
+
+		cout << "Getting cameras from serial numbers...";
+		FlyCapture2::PGRGuid guid;
+		error = busMgr.GetCameraFromSerialNumber(TOP_CAMERA_SERIAL_NUMBER, &guid);
+		if (error != PGRERROR_OK)
+		{
+			error.PrintErrorTrace();
+			return -1;
+		}
+		cout << "[OK]" << endl;
+		cout << "Connecting to cameras...";
+
+		camera_top = new FlyCapture2::Camera();
+		error = camera_top->Connect(&guid);
+		if (error != PGRERROR_OK)
+		{
+			error.PrintErrorTrace();
+			return -1;
+		}
+		cout << "Top...";
+
+		camera_side = new FlyCapture2::Camera();
+		error = camera_side->Connect(&guid);
+		if (error != PGRERROR_OK)
+		{
+			error.PrintErrorTrace();
+			return -1;
+		}
+		cout << "Side...[OK]" << endl;
+
+		cout << "Setting camera modes...";
+		// greyscale image mode
+		FlyCapture2::Format7ImageSettings fmt7ImageSettings;
+		fmt7ImageSettings.width = 1280;
+		fmt7ImageSettings.height = 10024;
+		fmt7ImageSettings.mode = MODE_0;
+		fmt7ImageSettings.offsetX = 0;
+		fmt7ImageSettings.offsetY = 0;
+		fmt7ImageSettings.pixelFormat = PIXEL_FORMAT_MONO8;
+		// Validate Format 7 settings
+		bool valid;
+		Format7PacketInfo fmt7PacketInfo;
+		error = camera_top->ValidateFormat7Settings(&fmt7ImageSettings,
+			&valid,
+			&fmt7PacketInfo);
+		unsigned int num_bytes =
+			fmt7PacketInfo.recommendedBytesPerPacket;
+
+		// Set Format 7 (partial image mode) settings
+		error = camera_top->SetFormat7Configuration(&fmt7ImageSettings,
+			num_bytes);
+		if (error != PGRERROR_OK)
+		{
+			error.PrintErrorTrace();
+			return -1;
+		}
+		cout << "Top...";
+		error = camera_side->ValidateFormat7Settings(&fmt7ImageSettings,
+			&valid,
+			&fmt7PacketInfo);
+		num_bytes =
+			fmt7PacketInfo.recommendedBytesPerPacket;
+
+		// Set Format 7 (partial image mode) settings
+		error = camera_side->SetFormat7Configuration(&fmt7ImageSettings,
+			num_bytes);
+		if (error != PGRERROR_OK)
+		{
+			error.PrintErrorTrace();
+			return -1;
+		}
+		cout << "Side...[OK]" << endl;
+
+		cout << "Starting cameras...";
+
+		error = camera_top->StartCapture();// OnTopImageGrabbed);
+		if (error != PGRERROR_OK)
+		{
+			error.PrintErrorTrace();
+			return -1;
+		}
+		cout << "Top...";
+
+		error = camera_side->StartCapture();// OnSideImageGrabbed);
+		if (error != PGRERROR_OK)
+		{
+			error.PrintErrorTrace();
+			return -1;
+		}
+		cout << "Side...[OK]" << endl;
+	}
+	else
+	{
+		cap_top.open(file_top.c_str());
+		cap_side.open(file_side.c_str());
+
+		if (!cap_top.isOpened() || !cap_side.isOpened())
+		{
+			printf("can not open camera or video file %s and %s\n", file_top.c_str(), file_side.c_str());
+			getchar();
+			return -1;
+		}
+	}
+
     for(;;)
     {
-        cap_top >> topimg;
-		if (topimg.empty()) break;
-		cap_side >> sideimg;
-		if (sideimg.empty()) break;
-
+		if (!useCamera)
+		{
+			cap_top >> topimg;
+			if (topimg.empty()) break;
+			cap_side >> sideimg;
+			if (sideimg.empty()) break;
+		}
+		else
+		{
+			GetImageFromCamera(camera_top, &topimg);
+			GetImageFromCamera(camera_side, &sideimg);
+		}
 		vector<vector<Point>>* goodFish_top = ProcessTopImage(topimg, bg_model_top_tank, fgmask_top_tank, fgimg_top_tank);
 		vector<vector<Point>>* goodFish_side = ProcessSideImage(sideimg, bg_model_side_tank, &fgmask_side_tank, fgimg_side_tank);
 

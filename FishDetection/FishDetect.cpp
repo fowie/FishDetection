@@ -17,13 +17,15 @@ using namespace utility;
 using namespace web;
 using namespace FlyCapture2;
 
-#define TOP_CAMERA_SERIAL_NUMBER 15322821
-#define SIDE_CAMERA_SERIAL_NUMBER 15322827
+#define TOP_CAMERA_SERIAL_NUMBER 15322821 //12484146 //
+#define SIDE_CAMERA_SERIAL_NUMBER 15322827 //12440341 //
 
 #define SMOOTHMASK false
 #define LOAD_BG_MODELS false
 #define BG_MODEL_SIDE_FILENAME "side_bg.model"
 #define BG_MODEL_TOP_FILENAME "top_bg.model"
+
+#define ERROR_OK_OR_BAIL(error)  if (error != FlyCapture2::PGRERROR_OK) {printf("Error caused bailout.  PG Error:"); error.PrintErrorTrace(); throw 1; }
 
 static void help()
 {
@@ -49,23 +51,6 @@ void OnTopImageGrabbed(Image* pImage, const void* pCallbackData)
 void OnSideImageGrabbed(Image* pImage, const void* pCallbackData)
 {
 
-}
-
-void GetImageFromCamera(Camera* cam, Mat* img)
-{
-	Image monoImage;
-	FlyCapture2::Error error = cam->RetrieveBuffer(&monoImage);
-	if (error != PGRERROR_OK)
-	{
-		error.PrintErrorTrace();
-		return;
-	}
-
-	// convert to OpenCV Mat
-	unsigned int rowBytes = (double)monoImage.GetReceivedDataSize() / (double)monoImage.GetRows();
-	cv::Mat(monoImage.GetRows(), monoImage.GetCols(), CV_8UC3, monoImage.GetData(), rowBytes).copyTo(*img);  // Not sure if this is necessary or if I could just return the new Mat, or define the input mat better and just set data...
-	
-	return;
 }
 
 vector<vector<Point>>* ProcessSideImage(Mat img, Ptr<BackgroundSubtractor> bg_model, Mat* fgmask, Mat fgimg)
@@ -187,9 +172,12 @@ vector<vector<Point>>* ProcessTopImage(Mat img, Ptr<BackgroundSubtractor> bg_mod
 	tankWalls[5][0] = tankBottom[5];
 	tankWalls[5][1] = tankBottom[0];
 
+	namedWindow("bands");
+	imshow("bands", img);
 	// Bright areas
 	Mat bands[3];
 	split(img, bands);
+	imshow("bands", bands[0]);
 	Mat lights;
 	threshold(bands[1], lights, 150, 255, THRESH_BINARY_INV);
 	//imshow("Lights", lights);
@@ -292,6 +280,86 @@ vector<vector<Point>>* ProcessTopImage(Mat img, Ptr<BackgroundSubtractor> bg_mod
 	return goodFish;
 }
 
+void ConfigureCamera(Camera* camera)
+{
+	// Set trigger mode & delay
+	FlyCapture2::TriggerDelay triggerDelay;
+	FlyCapture2::Error error;
+	error = camera->SetTriggerDelay(&triggerDelay);
+	ERROR_OK_OR_BAIL(error);
+
+	FlyCapture2::TriggerMode triggerMode;
+	triggerMode.onOff = false;
+	triggerMode.polarity = 0;
+	triggerMode.source = 0;
+	triggerMode.mode = 0;
+	error = camera->SetTriggerMode(&triggerMode);
+	ERROR_OK_OR_BAIL(error);
+
+	FlyCapture2::FC2Config fc2config;
+	error = camera->GetConfiguration(&fc2config);
+	ERROR_OK_OR_BAIL(error);
+
+	fc2config.grabMode = FlyCapture2::DROP_FRAMES;
+	fc2config.grabTimeout = 1;
+	fc2config.highPerformanceRetrieveBuffer = true;
+	error = camera->SetConfiguration(&fc2config);
+	ERROR_OK_OR_BAIL(error);
+
+	// greyscale image mode
+	FlyCapture2::Format7ImageSettings fmt7ImageSettings;
+	fmt7ImageSettings.width = 1280;
+	fmt7ImageSettings.height = 1024;
+	fmt7ImageSettings.mode = MODE_0;
+	fmt7ImageSettings.offsetX = 0;
+	fmt7ImageSettings.offsetY = 0;
+	fmt7ImageSettings.pixelFormat = PIXEL_FORMAT_MONO8;
+	// Validate Format 7 settings
+	bool valid;
+	Format7PacketInfo fmt7PacketInfo;
+	error = camera->ValidateFormat7Settings(&fmt7ImageSettings,
+		&valid,
+		&fmt7PacketInfo);
+	unsigned int num_bytes =
+		fmt7PacketInfo.recommendedBytesPerPacket;
+	ERROR_OK_OR_BAIL(error);
+
+	// Set Format 7 (partial image mode) settings
+	error = camera->SetFormat7Configuration(&fmt7ImageSettings,
+		num_bytes);
+	ERROR_OK_OR_BAIL(error);
+
+	error = camera->ValidateFormat7Settings(&fmt7ImageSettings,
+		&valid,
+		&fmt7PacketInfo);
+	num_bytes =
+		fmt7PacketInfo.recommendedBytesPerPacket;
+	ERROR_OK_OR_BAIL(error);
+
+	FlyCapture2::Property property;
+	property.type = FlyCapture2::SHUTTER;
+	property.absControl = true;
+	property.onePush = false;
+	property.onOff = true;
+	property.autoManualMode = true;
+	camera->SetProperty(&property);
+
+	property.type = FlyCapture2::GAIN;
+	property.absControl = true;
+	property.onePush = false;
+	property.onOff = true;
+	property.autoManualMode = true;
+	camera->SetProperty(&property);
+
+	property.type = FlyCapture2::AUTO_EXPOSURE;
+	property.absControl = true;
+	property.onePush = false;
+	property.onOff = true;
+	property.autoManualMode = true;
+	camera->SetProperty(&property);
+
+}
+
 //this is a sample for foreground detection functions
 int main(int argc, const char** argv)
 {
@@ -301,19 +369,26 @@ int main(int argc, const char** argv)
 	{
 		help();
 		useCamera = true;
-		fprintf(stderr, "Usage: FishDetect <path to top movie file> <path to side movie file> <path to output movie file> \nPress [Enter] to exit.\n");
-		fprintf(stderr, "Got:\n");
+
+		fprintf(stderr, "Usage: FishDetect <path to top movie file> <path to side movie file> <path to output movie file>\nProceeding in live camera mode.\n");
+		/*fprintf(stderr, "Got:\n");
 		for (int i = 0; i < argc; i++)
 		{
 			fprintf(stderr, "%d: %s\n", i, argv[i]);
 		}
 		getchar();
-		return -1;
+		return -1;*/
 	}
+	string file_top;
+	string file_side;
+	string outfile;
 
-    string file_top = argv[1];
-	string file_side = argv[2];
-	string outfile = argv[3];
+	if (!useCamera)
+	{
+		file_top = argv[1];
+		file_side = argv[2];
+		outfile = argv[3];
+	}
     string method = "mog";
     VideoCapture cap_top;
 	VideoCapture cap_side;
@@ -361,6 +436,9 @@ int main(int argc, const char** argv)
 		if (error != PGRERROR_OK)
 		{
 			error.PrintErrorTrace();
+#ifdef DEBUG
+			throw(1);
+#endif
 			return -1;
 		}
 		cout << "[OK]" << endl;
@@ -371,6 +449,9 @@ int main(int argc, const char** argv)
 		if (error != PGRERROR_OK)
 		{
 			error.PrintErrorTrace();
+#ifdef DEBUG
+			throw(1);
+#endif
 			return -1;
 		}
 		cout << "Top...";
@@ -380,59 +461,25 @@ int main(int argc, const char** argv)
 		if (error != PGRERROR_OK)
 		{
 			error.PrintErrorTrace();
+#ifdef DEBUG
+			throw(1);
+#endif
 			return -1;
 		}
 		cout << "Side...[OK]" << endl;
 
 		cout << "Setting camera modes...";
-		// greyscale image mode
-		FlyCapture2::Format7ImageSettings fmt7ImageSettings;
-		fmt7ImageSettings.width = 1280;
-		fmt7ImageSettings.height = 10024;
-		fmt7ImageSettings.mode = MODE_0;
-		fmt7ImageSettings.offsetX = 0;
-		fmt7ImageSettings.offsetY = 0;
-		fmt7ImageSettings.pixelFormat = PIXEL_FORMAT_MONO8;
-		// Validate Format 7 settings
-		bool valid;
-		Format7PacketInfo fmt7PacketInfo;
-		error = camera_top->ValidateFormat7Settings(&fmt7ImageSettings,
-			&valid,
-			&fmt7PacketInfo);
-		unsigned int num_bytes =
-			fmt7PacketInfo.recommendedBytesPerPacket;
-
-		// Set Format 7 (partial image mode) settings
-		error = camera_top->SetFormat7Configuration(&fmt7ImageSettings,
-			num_bytes);
-		if (error != PGRERROR_OK)
-		{
-			error.PrintErrorTrace();
-			return -1;
-		}
-		cout << "Top...";
-		error = camera_side->ValidateFormat7Settings(&fmt7ImageSettings,
-			&valid,
-			&fmt7PacketInfo);
-		num_bytes =
-			fmt7PacketInfo.recommendedBytesPerPacket;
-
-		// Set Format 7 (partial image mode) settings
-		error = camera_side->SetFormat7Configuration(&fmt7ImageSettings,
-			num_bytes);
-		if (error != PGRERROR_OK)
-		{
-			error.PrintErrorTrace();
-			return -1;
-		}
-		cout << "Side...[OK]" << endl;
-
-		cout << "Starting cameras...";
+		ConfigureCamera(camera_top);
+		ConfigureCamera(camera_side);
+		cout << "[OK]\nStarting cameras...";
 
 		error = camera_top->StartCapture();// OnTopImageGrabbed);
 		if (error != PGRERROR_OK)
 		{
 			error.PrintErrorTrace();
+#ifdef DEBUG
+			throw(1);
+#endif
 			return -1;
 		}
 		cout << "Top...";
@@ -441,6 +488,9 @@ int main(int argc, const char** argv)
 		if (error != PGRERROR_OK)
 		{
 			error.PrintErrorTrace();
+#ifdef DEBUG
+			throw(1);
+#endif
 			return -1;
 		}
 		cout << "Side...[OK]" << endl;
@@ -469,8 +519,28 @@ int main(int argc, const char** argv)
 		}
 		else
 		{
-			GetImageFromCamera(camera_top, &topimg);
-			GetImageFromCamera(camera_side, &sideimg);
+			Image monoImage_top;
+			Image monoImage_side;
+			FlyCapture2::Error error = camera_top->RetrieveBuffer(&monoImage_top);
+			ERROR_OK_OR_BAIL(error);
+
+			// convert to OpenCV Mat
+			unsigned int rowBytes = (double)monoImage_top.GetReceivedDataSize() / (double)monoImage_top.GetRows();
+			unsigned int rows = monoImage_top.GetRows();
+			unsigned int cols = monoImage_top.GetCols();
+			unsigned char* data = (unsigned char*)malloc(rows*cols * sizeof(char));
+			memcpy(data, monoImage_top.GetData(), rows*cols * sizeof(char));
+			topimg = Mat(rows, cols, CV_8UC1, data, rowBytes);
+			imshow("Top Camera", topimg);
+
+			error = camera_side->RetrieveBuffer(&monoImage_side);
+			ERROR_OK_OR_BAIL(error);
+			// convert to OpenCV Mat
+			rowBytes = (double)monoImage_side.GetReceivedDataSize() / (double)monoImage_side.GetRows();
+			unsigned char* data2 = (unsigned char*)malloc(rows*cols * sizeof(char));
+			memcpy(data2, monoImage_side.GetData(), rows*cols * sizeof(char));
+			sideimg = Mat(monoImage_side.GetRows(), monoImage_side.GetCols(), CV_8UC1, data2, rowBytes);
+			imshow("Side Camera", sideimg);
 		}
 		vector<vector<Point>>* goodFish_top = ProcessTopImage(topimg, bg_model_top_tank, fgmask_top_tank, fgimg_top_tank);
 		vector<vector<Point>>* goodFish_side = ProcessSideImage(sideimg, bg_model_side_tank, &fgmask_side_tank, fgimg_side_tank);
@@ -522,7 +592,7 @@ int main(int argc, const char** argv)
 
         char k = (char)waitKey(30);
         if( k == 27 ) break;
-    }
+	}
 	bg_model_side_tank->save(BG_MODEL_SIDE_FILENAME);
 	bg_model_top_tank->save(BG_MODEL_TOP_FILENAME);
 

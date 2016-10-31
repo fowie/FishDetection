@@ -17,8 +17,8 @@ using namespace utility;
 using namespace web;
 using namespace FlyCapture2;
 
-#define TOP_CAMERA_SERIAL_NUMBER 15322821 //12484146 //
-#define SIDE_CAMERA_SERIAL_NUMBER 15322827 //12440341 //
+#define TOP_CAMERA_SERIAL_NUMBER 12484146 //15322821 //
+#define SIDE_CAMERA_SERIAL_NUMBER 12440341 //15322827 //
 
 #define SMOOTHMASK false
 #define LOAD_BG_MODELS false
@@ -335,6 +335,14 @@ void ConfigureCamera(Camera* camera)
 	property.onePush = false;
 	property.onOff = true;
 	property.autoManualMode = true;
+	camera->SetProperty(&property);
+
+	property.type = FlyCapture2::FRAME_RATE;
+	property.absControl = true;
+	property.onePush = false;
+	property.onOff = true;
+	property.autoManualMode = false;
+	property.absValue = 30.0;
 	camera->SetProperty(&property);
 
 	property.type = FlyCapture2::GAIN;

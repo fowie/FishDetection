@@ -3,7 +3,7 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
     <OPENCV_ROOT>C:\Opencv3\opencv\build</OPENCV_ROOT>
-    <OPENCV_DIR>$(OPENCV_ROOT)\$(Platform)\vc12</OPENCV_DIR>
+    <OPENCV_DIR>$(OPENCV_ROOT)\$(Platform)\vc14</OPENCV_DIR>
     <OPENCV_INC_DIR>$(OPENCV_ROOT)\include</OPENCV_INC_DIR>
     <OPENCV_LIB_DIR>$(OPENCV_DIR)\lib</OPENCV_LIB_DIR>
   </PropertyGroup>

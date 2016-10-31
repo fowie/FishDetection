@@ -282,9 +282,9 @@ vector<vector<Point>>* ProcessTopImage(Mat img, Ptr<BackgroundSubtractor> bg_mod
 
 void ConfigureCamera(Camera* camera)
 {
-	// Set trigger mode & delay
-	FlyCapture2::TriggerDelay triggerDelay;
 	FlyCapture2::Error error;
+	/*// Set trigger mode & delay
+	FlyCapture2::TriggerDelay triggerDelay;
 	error = camera->SetTriggerDelay(&triggerDelay);
 	ERROR_OK_OR_BAIL(error);
 
@@ -295,7 +295,7 @@ void ConfigureCamera(Camera* camera)
 	triggerMode.mode = 0;
 	error = camera->SetTriggerMode(&triggerMode);
 	ERROR_OK_OR_BAIL(error);
-
+	*/
 	FlyCapture2::FC2Config fc2config;
 	error = camera->GetConfiguration(&fc2config);
 	ERROR_OK_OR_BAIL(error);
@@ -323,17 +323,10 @@ void ConfigureCamera(Camera* camera)
 	unsigned int num_bytes =
 		fmt7PacketInfo.recommendedBytesPerPacket;
 	ERROR_OK_OR_BAIL(error);
-
+	
 	// Set Format 7 (partial image mode) settings
 	error = camera->SetFormat7Configuration(&fmt7ImageSettings,
 		num_bytes);
-	ERROR_OK_OR_BAIL(error);
-
-	error = camera->ValidateFormat7Settings(&fmt7ImageSettings,
-		&valid,
-		&fmt7PacketInfo);
-	num_bytes =
-		fmt7PacketInfo.recommendedBytesPerPacket;
 	ERROR_OK_OR_BAIL(error);
 
 	FlyCapture2::Property property;
@@ -474,25 +467,11 @@ int main(int argc, const char** argv)
 		cout << "[OK]\nStarting cameras...";
 
 		error = camera_top->StartCapture();// OnTopImageGrabbed);
-		if (error != PGRERROR_OK)
-		{
-			error.PrintErrorTrace();
-#ifdef DEBUG
-			throw(1);
-#endif
-			return -1;
-		}
+		ERROR_OK_OR_BAIL(error);
 		cout << "Top...";
 
 		error = camera_side->StartCapture();// OnSideImageGrabbed);
-		if (error != PGRERROR_OK)
-		{
-			error.PrintErrorTrace();
-#ifdef DEBUG
-			throw(1);
-#endif
-			return -1;
-		}
+		ERROR_OK_OR_BAIL(error);
 		cout << "Side...[OK]" << endl;
 	}
 	else
@@ -521,8 +500,12 @@ int main(int argc, const char** argv)
 		{
 			Image monoImage_top;
 			Image monoImage_side;
-			FlyCapture2::Error error = camera_top->RetrieveBuffer(&monoImage_top);
-			ERROR_OK_OR_BAIL(error);
+			
+			FlyCapture2::Error error;
+			do
+			{
+				error = camera_top->RetrieveBuffer(&monoImage_top);
+			} while (error != PGRERROR_OK || error == PGRERROR_TIMEOUT);
 
 			// convert to OpenCV Mat
 			unsigned int rowBytes = (double)monoImage_top.GetReceivedDataSize() / (double)monoImage_top.GetRows();

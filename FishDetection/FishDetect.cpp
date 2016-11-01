@@ -77,11 +77,8 @@ vector<vector<Point>>* ProcessSideImage(Mat img, Ptr<BackgroundSubtractor> bg_mo
 	tankContours[0] = tankEdges;
 
 	// Bright areas
-	Mat bands[3];
-	split(img, bands);
 	Mat lights;
-	threshold(bands[1], lights, 150, 255, THRESH_BINARY_INV);
-	//imshow("Lights", lights);
+	threshold(img, lights, 150, 255, THRESH_BINARY_INV);
 
 	if (fgimg.empty())
 		fgimg.create(img.size(), img.type());
@@ -172,15 +169,9 @@ vector<vector<Point>>* ProcessTopImage(Mat img, Ptr<BackgroundSubtractor> bg_mod
 	tankWalls[5][0] = tankBottom[5];
 	tankWalls[5][1] = tankBottom[0];
 
-	namedWindow("bands");
-	imshow("bands", img);
 	// Bright areas
-	Mat bands[3];
-	split(img, bands);
-	imshow("bands", bands[0]);
 	Mat lights;
-	threshold(bands[1], lights, 150, 255, THRESH_BINARY_INV);
-	//imshow("Lights", lights);
+	threshold(img, lights, 150, 255, THRESH_BINARY_INV);
 
 	if (fgimg.empty())
 		fgimg.create(img.size(), img.type());
@@ -276,7 +267,7 @@ vector<vector<Point>>* ProcessTopImage(Mat img, Ptr<BackgroundSubtractor> bg_mod
 		}
 	}
 	cv::drawContours(img, bottomContours, -1, Scalar(0, 255, 0));
-
+	imshow("bands", img);
 	return goodFish;
 }
 
@@ -399,7 +390,7 @@ int main(int argc, const char** argv)
 	namedWindow("Side Camera");
 	namedWindow("Top Camera");
 	moveWindow("Side Camera", 0, 0);
-	moveWindow("Top Camera", 1280, 0);
+	moveWindow("Top Camera", 1024, 0);
 
 	Ptr<BackgroundSubtractor> bg_model_top_tank = method == "knn" ?
 		createBackgroundSubtractorKNN().dynamicCast<BackgroundSubtractor>() :
@@ -510,7 +501,6 @@ int main(int argc, const char** argv)
 			{
 				error = camera_side->RetrieveBuffer(&monoImage_side);
 			} while (error != PGRERROR_OK || error == PGRERROR_TIMEOUT);
-			ERROR_OK_OR_BAIL(error);
 			// convert to OpenCV Mat
 			rowBytes = (double)monoImage_side.GetReceivedDataSize() / (double)monoImage_side.GetRows();
 			unsigned char* data2 = (unsigned char*)malloc(rows*cols * sizeof(char));
@@ -555,8 +545,12 @@ int main(int argc, const char** argv)
 			system(command);
 		}
 		*/
-        imshow("Side Camera", sideimg);
-		imshow("Top Camera", topimg);
+		Mat sideimgscaled, topimgscaled;
+		cv::resize(sideimg, sideimgscaled, cv::Size(1024, 768));
+		cv::resize(topimg, topimgscaled, cv::Size(1024, 768));
+
+        imshow("Side Camera", sideimgscaled);
+		imshow("Top Camera", topimgscaled);
 		//imwrite("out\\out" + std::to_string(frameNo) +".jpg", sideimg);
 		frameNo++;
 		

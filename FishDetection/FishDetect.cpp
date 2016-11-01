@@ -17,13 +17,16 @@ using namespace utility;
 using namespace web;
 using namespace FlyCapture2;
 
-#define TOP_CAMERA_SERIAL_NUMBER 12484146 //15322821 //
-#define SIDE_CAMERA_SERIAL_NUMBER 12484144 //15322827 //
+#define TOP_CAMERA_SERIAL_NUMBER 15322821 //12484146 //
+#define SIDE_CAMERA_SERIAL_NUMBER 15322827 //12484144 //
 
 #define SMOOTHMASK false
 #define LOAD_BG_MODELS false
 #define BG_MODEL_SIDE_FILENAME "side_bg.model"
 #define BG_MODEL_TOP_FILENAME "top_bg.model"
+
+#define DISPLAY_HEIGHT 600
+#define DISPLAY_WIDTH 800
 
 #define ERROR_OK_OR_BAIL(error)  if (error != FlyCapture2::PGRERROR_OK) {printf("Error caused bailout.  PG Error:"); error.PrintErrorTrace(); throw 1; }
 
@@ -267,7 +270,6 @@ vector<vector<Point>>* ProcessTopImage(Mat img, Ptr<BackgroundSubtractor> bg_mod
 		}
 	}
 	cv::drawContours(img, bottomContours, -1, Scalar(0, 255, 0));
-	imshow("bands", img);
 	return goodFish;
 }
 
@@ -390,7 +392,7 @@ int main(int argc, const char** argv)
 	namedWindow("Side Camera");
 	namedWindow("Top Camera");
 	moveWindow("Side Camera", 0, 0);
-	moveWindow("Top Camera", 1024, 0);
+	moveWindow("Top Camera", DISPLAY_WIDTH, 0);
 
 	Ptr<BackgroundSubtractor> bg_model_top_tank = method == "knn" ?
 		createBackgroundSubtractorKNN().dynamicCast<BackgroundSubtractor>() :
@@ -546,8 +548,8 @@ int main(int argc, const char** argv)
 		}
 		*/
 		Mat sideimgscaled, topimgscaled;
-		cv::resize(sideimg, sideimgscaled, cv::Size(1024, 768));
-		cv::resize(topimg, topimgscaled, cv::Size(1024, 768));
+		cv::resize(sideimg, sideimgscaled, cv::Size(DISPLAY_WIDTH, DISPLAY_HEIGHT));
+		cv::resize(topimg, topimgscaled, cv::Size(DISPLAY_WIDTH, DISPLAY_HEIGHT));
 
         imshow("Side Camera", sideimgscaled);
 		imshow("Top Camera", topimgscaled);
@@ -559,6 +561,12 @@ int main(int argc, const char** argv)
 		if(goodFish_side != NULL)
 			delete goodFish_side;
 
+		free(sideimg.data);
+		free(topimg.data);
+		sideimg.release();
+		topimg.release();
+		sideimgscaled.release();
+		topimgscaled.release();
         char k = (char)waitKey(30);
         if( k == 27 ) break;
 	}

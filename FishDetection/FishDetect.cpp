@@ -17,8 +17,8 @@ using namespace utility;
 using namespace web;
 using namespace FlyCapture2;
 
-#define TOP_CAMERA_SERIAL_NUMBER 15322821 //12484146 //
-#define SIDE_CAMERA_SERIAL_NUMBER 15322827 //12484144 //
+#define TOP_CAMERA_SERIAL_NUMBER 12484146 //15322821 //
+#define SIDE_CAMERA_SERIAL_NUMBER 12484144 //15322827 //
 
 #define SMOOTHMASK false
 #define LOAD_BG_MODELS false
@@ -81,7 +81,9 @@ vector<vector<Point>>* ProcessSideImage(Mat img, Ptr<BackgroundSubtractor> bg_mo
 
 	// Bright areas
 	Mat lights;
-	threshold(img, lights, 150, 255, THRESH_BINARY_INV);
+	Mat bands[3];
+	split(img, bands);
+	threshold(bands[1], lights, 150, 255, THRESH_BINARY_INV);
 
 	if (fgimg.empty())
 		fgimg.create(img.size(), img.type());
@@ -115,25 +117,19 @@ vector<vector<Point>>* ProcessSideImage(Mat img, Ptr<BackgroundSubtractor> bg_mo
 		double area = contourArea(contours[i], false);
 		if (area > 30)
 		{
-			/* TO DO
-			For each blob I've detected, draw a line perpendicular to each tank edge (mirror).  Search those lines for blobs
-			If you find one additional blob along this line, remove it from the list
-			If you find two (or more) blobs along this line, remove the one that is closest in size to your own
-			*/
 			// Get contour's center of mass
 			Moments m = moments(contours[i], false);
 			Point2f mc = Point2f(m.m10 / m.m00, m.m01 / m.m00);
-			cv::drawMarker(img, mc, Scalar(255, 0, 0), cv::MarkerTypes::MARKER_STAR, 10);
 			// if the center of mass is within the bounding box of the tank bottom, I already know it's not a reflection
 			vector<vector<Point>> possiblyBadFish;
 			if (cv::pointPolygonTest(tankEdges, mc, false) < 0)  // possibly a reflection
 			{
-				drawContours(img, contours, i, Scalar(255, 0, 255), 1, 8, hierarchy, 0, Point());
-				possiblyBadFish.push_back(contours[i]);
-
+				//drawContours(img, contours, i, Scalar(255, 0, 255), 1, 8, hierarchy, 0, Point());
+				//possiblyBadFish.push_back(contours[i]);
 			}
 			else  // guaranteed good fish
 			{
+				cv::drawMarker(img, mc, Scalar(255, 0, 0), cv::MarkerTypes::MARKER_STAR, 10);
 				drawContours(img, contours, i, Scalar(0, 255, 255), 1, 8, hierarchy, 0, Point());
 				goodFish->push_back(contours[i]);
 			}
@@ -174,7 +170,10 @@ vector<vector<Point>>* ProcessTopImage(Mat img, Ptr<BackgroundSubtractor> bg_mod
 
 	// Bright areas
 	Mat lights;
-	threshold(img, lights, 150, 255, THRESH_BINARY_INV);
+	Mat bands[3];
+	split(img, bands);
+
+	threshold(bands[1], lights, 150, 255, THRESH_BINARY_INV);
 
 	if (fgimg.empty())
 		fgimg.create(img.size(), img.type());
@@ -269,7 +268,7 @@ vector<vector<Point>>* ProcessTopImage(Mat img, Ptr<BackgroundSubtractor> bg_mod
 			}
 		}
 	}
-	cv::drawContours(img, bottomContours, -1, Scalar(0, 255, 0));
+	cv::drawContours(img, bottomContours, -1, Scalar(128, 255, 0));
 	return goodFish;
 }
 
@@ -497,7 +496,7 @@ int main(int argc, const char** argv)
 			unsigned int cols = monoImage_top.GetCols();
 			unsigned char* data = (unsigned char*)malloc(rows*cols * sizeof(char));
 			memcpy(data, monoImage_top.GetData(), rows*cols * sizeof(char));
-			topimg = Mat(rows, cols, CV_8UC1, data, rowBytes);
+			cv::cvtColor(Mat(rows, cols, CV_8UC1, data, rowBytes), topimg, CV_GRAY2BGR);
 
 			do
 			{
@@ -507,7 +506,10 @@ int main(int argc, const char** argv)
 			rowBytes = (double)monoImage_side.GetReceivedDataSize() / (double)monoImage_side.GetRows();
 			unsigned char* data2 = (unsigned char*)malloc(rows*cols * sizeof(char));
 			memcpy(data2, monoImage_side.GetData(), rows*cols * sizeof(char));
-			sideimg = Mat(monoImage_side.GetRows(), monoImage_side.GetCols(), CV_8UC1, data2, rowBytes);
+			cv::cvtColor(Mat(monoImage_side.GetRows(), monoImage_side.GetCols(), CV_8UC1, data2, rowBytes), sideimg, CV_GRAY2BGR);
+			
+			free(data);
+			free(data2);
 		}
 		vector<vector<Point>>* goodFish_top = ProcessTopImage(topimg, bg_model_top_tank, fgmask_top_tank, fgimg_top_tank);
 		vector<vector<Point>>* goodFish_side = ProcessSideImage(sideimg, bg_model_side_tank, &fgmask_side_tank, fgimg_side_tank);
@@ -561,8 +563,6 @@ int main(int argc, const char** argv)
 		if(goodFish_side != NULL)
 			delete goodFish_side;
 
-		free(sideimg.data);
-		free(topimg.data);
 		sideimg.release();
 		topimg.release();
 		sideimgscaled.release();

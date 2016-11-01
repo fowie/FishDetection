@@ -18,7 +18,7 @@ using namespace web;
 using namespace FlyCapture2;
 
 #define TOP_CAMERA_SERIAL_NUMBER 12484146 //15322821 //
-#define SIDE_CAMERA_SERIAL_NUMBER 12440341 //15322827 //
+#define SIDE_CAMERA_SERIAL_NUMBER 12484144 //15322827 //
 
 #define SMOOTHMASK false
 #define LOAD_BG_MODELS false
@@ -432,41 +432,24 @@ int main(int argc, const char** argv)
 		}
 
 		cout << "Getting cameras from serial numbers...";
-		FlyCapture2::PGRGuid guid;
-		error = busMgr.GetCameraFromSerialNumber(TOP_CAMERA_SERIAL_NUMBER, &guid);
-		if (error != PGRERROR_OK)
-		{
-			error.PrintErrorTrace();
-#ifdef DEBUG
-			throw(1);
-#endif
-			return -1;
-		}
-		cout << "[OK]" << endl;
+		FlyCapture2::PGRGuid top_guid;
+		FlyCapture2::PGRGuid side_guid;
+		error = busMgr.GetCameraFromSerialNumber(TOP_CAMERA_SERIAL_NUMBER, &top_guid);
+		ERROR_OK_OR_BAIL(error);
+		cout << "Top...";
+		error = busMgr.GetCameraFromSerialNumber(SIDE_CAMERA_SERIAL_NUMBER, &side_guid);
+		ERROR_OK_OR_BAIL(error);
+		cout << "Side...[OK]" << endl;
 		cout << "Connecting to cameras...";
 
 		camera_top = new FlyCapture2::Camera();
-		error = camera_top->Connect(&guid);
-		if (error != PGRERROR_OK)
-		{
-			error.PrintErrorTrace();
-#ifdef DEBUG
-			throw(1);
-#endif
-			return -1;
-		}
+		error = camera_top->Connect(&top_guid);
+		ERROR_OK_OR_BAIL(error);
 		cout << "Top...";
 
 		camera_side = new FlyCapture2::Camera();
-		error = camera_side->Connect(&guid);
-		if (error != PGRERROR_OK)
-		{
-			error.PrintErrorTrace();
-#ifdef DEBUG
-			throw(1);
-#endif
-			return -1;
-		}
+		error = camera_side->Connect(&side_guid);
+		ERROR_OK_OR_BAIL(error);
 		cout << "Side...[OK]" << endl;
 
 		cout << "Setting camera modes...";
@@ -522,16 +505,17 @@ int main(int argc, const char** argv)
 			unsigned char* data = (unsigned char*)malloc(rows*cols * sizeof(char));
 			memcpy(data, monoImage_top.GetData(), rows*cols * sizeof(char));
 			topimg = Mat(rows, cols, CV_8UC1, data, rowBytes);
-			imshow("Top Camera", topimg);
 
-			error = camera_side->RetrieveBuffer(&monoImage_side);
+			do
+			{
+				error = camera_side->RetrieveBuffer(&monoImage_side);
+			} while (error != PGRERROR_OK || error == PGRERROR_TIMEOUT);
 			ERROR_OK_OR_BAIL(error);
 			// convert to OpenCV Mat
 			rowBytes = (double)monoImage_side.GetReceivedDataSize() / (double)monoImage_side.GetRows();
 			unsigned char* data2 = (unsigned char*)malloc(rows*cols * sizeof(char));
 			memcpy(data2, monoImage_side.GetData(), rows*cols * sizeof(char));
 			sideimg = Mat(monoImage_side.GetRows(), monoImage_side.GetCols(), CV_8UC1, data2, rowBytes);
-			imshow("Side Camera", sideimg);
 		}
 		vector<vector<Point>>* goodFish_top = ProcessTopImage(topimg, bg_model_top_tank, fgmask_top_tank, fgimg_top_tank);
 		vector<vector<Point>>* goodFish_side = ProcessSideImage(sideimg, bg_model_side_tank, &fgmask_side_tank, fgimg_side_tank);

@@ -17,8 +17,8 @@ using namespace utility;
 using namespace web;
 using namespace FlyCapture2;
 
-#define TOP_CAMERA_SERIAL_NUMBER 12484146 //15322821 //
-#define SIDE_CAMERA_SERIAL_NUMBER 12484144 //15322827 //
+#define TOP_CAMERA_SERIAL_NUMBER 15322821 //12484146 //
+#define SIDE_CAMERA_SERIAL_NUMBER 15322827 //12484144 //
 
 #define SMOOTHMASK false
 #define LOAD_BG_MODELS false
@@ -56,7 +56,7 @@ void OnSideImageGrabbed(Image* pImage, const void* pCallbackData)
 
 }
 
-vector<vector<Point>>* ProcessSideImage(Mat img, Ptr<BackgroundSubtractor> bg_model, Mat* fgmask, Mat fgimg)
+vector<vector<Point>>* ProcessSideImage(Mat img, Ptr<BackgroundSubtractor> bg_model, Mat* fgmask, Mat* fgimg)
 {
 	vector<vector<Point>>* goodFish = new vector<vector<Point>>();
 	vector<Point> tankEdges(14);
@@ -79,31 +79,31 @@ vector<vector<Point>>* ProcessSideImage(Mat img, Ptr<BackgroundSubtractor> bg_mo
 	vector<vector<Point>> tankContours(1);
 	tankContours[0] = tankEdges;
 
-	// Bright areas
-	Mat lights;
-	Mat bands[3];
-	split(img, bands);
-	threshold(bands[1], lights, 150, 255, THRESH_BINARY_INV);
-
-	if (fgimg.empty())
-		fgimg.create(img.size(), img.type());
+	if (fgimg->empty())
+		fgimg->create(img.size(), img.type());
 
 	//update the model
 	bg_model->apply(img, *fgmask, -1);
 	if (SMOOTHMASK) {
 		GaussianBlur(*fgmask, *fgmask, Size(11, 11), 3.5, 3.5);
-		threshold(*fgmask, *fgmask, 10, 255, THRESH_BINARY);
 	}
-
+	// MOG method will return a non-binary mask, with grey in "shadow" areas.  we want those areas 
+	// to be used in the mask as well, so threshold any non-black pixels to white before doing the mask
+	threshold(*fgmask, *fgmask, 10, 255, THRESH_BINARY);
+	Mat kernel = Mat(Size(5, 5), CV_8U);
+	//memset(kernel.data, 1, 5 * 5 * sizeof(uint));
+	morphologyEx(*fgmask, *fgmask, MORPH_CLOSE, kernel);
+	//imshow("Side Camera", *fgmask);
 	Mat fgmaskMed;
 	medianBlur(*fgmask, fgmaskMed, 3);
 
-	fgimg = Scalar::all(0);
-	img.copyTo(fgimg, fgmaskMed);
+	//fgimg = Scalar::all(0);
+	img.copyTo(*fgimg, fgmaskMed);
 
 	Mat bgimg;
 	bg_model->getBackgroundImage(bgimg);
-	*fgmask = *fgmask & lights;
+	imwrite("side_bg_img.bmp", bgimg);
+	//*fgmask = *fgmask & lights;
 
 	// Render contours on the image.
 	vector<vector<Point> > contours;
@@ -130,7 +130,7 @@ vector<vector<Point>>* ProcessSideImage(Mat img, Ptr<BackgroundSubtractor> bg_mo
 			else  // guaranteed good fish
 			{
 				cv::drawMarker(img, mc, Scalar(255, 0, 0), cv::MarkerTypes::MARKER_STAR, 10);
-				drawContours(img, contours, i, Scalar(0, 255, 255), 1, 8, hierarchy, 0, Point());
+				drawContours(img, contours, i, Scalar(0, 255, 255), 2, 8, hierarchy, 0, Point());
 				goodFish->push_back(contours[i]);
 			}
 		}
@@ -140,7 +140,7 @@ vector<vector<Point>>* ProcessSideImage(Mat img, Ptr<BackgroundSubtractor> bg_mo
 	return goodFish;
 }
 
-vector<vector<Point>>* ProcessTopImage(Mat img, Ptr<BackgroundSubtractor> bg_model, Mat fgmask, Mat fgimg)
+vector<vector<Point>>* ProcessTopImage(Mat img, Ptr<BackgroundSubtractor> bg_model, Mat* fgmask, Mat* fgimg)
 {
 	vector<vector<Point>>* goodFish = new vector<vector<Point>>();
 
@@ -169,36 +169,35 @@ vector<vector<Point>>* ProcessTopImage(Mat img, Ptr<BackgroundSubtractor> bg_mod
 	tankWalls[5][1] = tankBottom[0];
 
 	// Bright areas
-	Mat lights;
-	Mat bands[3];
-	split(img, bands);
+	//Mat lights;
+	//Mat bands[3];
+	//split(img, bands);
 
-	threshold(bands[1], lights, 150, 255, THRESH_BINARY_INV);
+	//threshold(bands[1], lights, 150, 255, THRESH_BINARY_INV);
 
-	if (fgimg.empty())
-		fgimg.create(img.size(), img.type());
+	if (fgimg->empty())
+		fgimg->create(img.size(), img.type());
 
 	//update the model
-	bg_model->apply(img, fgmask, -1);
+	bg_model->apply(img, *fgmask, -1);
 	if (SMOOTHMASK)  {
-		GaussianBlur(fgmask, fgmask, Size(11, 11), 3.5, 3.5);
-		threshold(fgmask, fgmask, 10, 255, THRESH_BINARY);
+		GaussianBlur(*fgmask, *fgmask, Size(11, 11), 3.5, 3.5);
 	}
-
+	threshold(*fgmask, *fgmask, 10, 255, THRESH_BINARY);
 	Mat fgmaskMed;
-	medianBlur(fgmask, fgmaskMed, 3);
+	medianBlur(*fgmask, fgmaskMed, 3);
 
-	fgimg = Scalar::all(0);
-	img.copyTo(fgimg, fgmaskMed);
+	//fgimg = Scalar::all(0);
+	img.copyTo(*fgimg, fgmaskMed);
 
 	Mat bgimg;
 	bg_model->getBackgroundImage(bgimg);
-	fgmask = fgmask & lights;
+	//fgmask = fgmask & lights;
 
 	// Render contours on the image.
 	vector<vector<Point> > contours;
 	vector<Vec4i> hierarchy;
-	findContours(fgmask, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+	findContours(*fgmask, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
 
 	int minContourLen = 30;
 	bool oneFishDone = false;
@@ -390,8 +389,8 @@ int main(int argc, const char** argv)
 
 	namedWindow("Side Camera");
 	namedWindow("Top Camera");
-	moveWindow("Side Camera", 0, 0);
-	moveWindow("Top Camera", DISPLAY_WIDTH, 0);
+	moveWindow("Side Camera", -100, 0);
+	moveWindow("Top Camera", DISPLAY_WIDTH-100, 0);
 
 	Ptr<BackgroundSubtractor> bg_model_top_tank = method == "knn" ?
 		createBackgroundSubtractorKNN().dynamicCast<BackgroundSubtractor>() :
@@ -511,8 +510,8 @@ int main(int argc, const char** argv)
 			free(data);
 			free(data2);
 		}
-		vector<vector<Point>>* goodFish_top = ProcessTopImage(topimg, bg_model_top_tank, fgmask_top_tank, fgimg_top_tank);
-		vector<vector<Point>>* goodFish_side = ProcessSideImage(sideimg, bg_model_side_tank, &fgmask_side_tank, fgimg_side_tank);
+		vector<vector<Point>>* goodFish_top = ProcessTopImage(topimg, bg_model_top_tank, &fgmask_top_tank, &fgimg_top_tank);
+		vector<vector<Point>>* goodFish_side = ProcessSideImage(sideimg, bg_model_side_tank, &fgmask_side_tank, &fgimg_side_tank);
 
 		// create the json to submit
 		// this is expected format:
@@ -569,9 +568,16 @@ int main(int argc, const char** argv)
 		topimgscaled.release();
         char k = (char)waitKey(30);
         if( k == 27 ) break;
+		if (k == 'S')
+		{
+			imwrite("fgimg_top_tank.bmp", fgimg_top_tank);
+			imwrite("fgmask_top_tank.bmp", fgmask_top_tank);
+			imwrite("fgimg_side_tank.bmp", fgimg_side_tank);
+			imwrite("fgmask_side_tank.bmp", fgmask_side_tank);
+		}
 	}
-	bg_model_side_tank->save(BG_MODEL_SIDE_FILENAME);
-	bg_model_top_tank->save(BG_MODEL_TOP_FILENAME);
+	//bg_model_side_tank->save(BG_MODEL_SIDE_FILENAME);
+	//bg_model_top_tank->save(BG_MODEL_TOP_FILENAME);
 
     return 0;
 }

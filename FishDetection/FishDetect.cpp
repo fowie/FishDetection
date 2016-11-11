@@ -30,6 +30,8 @@ using namespace FlyCapture2;
 
 #define ERROR_OK_OR_BAIL(error)  if (error != FlyCapture2::PGRERROR_OK) {printf("Error caused bailout.  PG Error:"); error.PrintErrorTrace(); throw 1; }
 
+time_t submitTimer = time(NULL);
+
 static void help()
 {
 	 printf("\nBackground segmentation.\n"
@@ -74,7 +76,6 @@ vector<vector<Point>>* ProcessSideImage(Mat img, Ptr<BackgroundSubtractor> bg_mo
 	tankEdges[11] = Point(711, 21);
 	tankEdges[12] = Point(555, 21);
 	tankEdges[13] = Point(265, 111);
-
 
 	vector<vector<Point>> tankContours(1);
 	tankContours[0] = tankEdges;
@@ -352,9 +353,37 @@ void ConfigureCamera(Camera* camera)
 
 }
 
+void SubmitFishPoints(json::value jsonArray)
+{
+	time_t now = time(NULL);
+	double seconds = difftime(now, submitTimer);
+	if (seconds < 5)
+	{
+		return;
+	}
+	time(&submitTimer); // update last submit time
+
+	utility::stringstream_t stream;
+	utility::string_t jsonString = jsonArray.serialize();
+	std::replace(jsonString.begin(), jsonString.end(), '"', '\'');
+	int size_needed = WideCharToMultiByte(CP_UTF8, 0, jsonString.c_str(), jsonString.length(), NULL, 0, NULL, NULL);
+	std::string strTo(size_needed, 0);
+	WideCharToMultiByte(CP_UTF8, 0, jsonString.c_str(), jsonString.length(), &strTo[0], size_needed, NULL, NULL);
+
+	char* command = (char*)malloc(strTo.size() + 20);
+	strcpy(command, "FishData.exe \"");
+	command = strcat(command, strTo.c_str());
+	strcat(command, "\"");
+
+	printf("Command: [%s]\n", command);
+	system(command);
+}
 //this is a sample for foreground detection functions
 int main(int argc, const char** argv)
 {
+	int bottomOfTankZ = 790;
+	int zStep = 100;  // number of pixels between each Z step.  Gives about 7 steps
+
 	bool useCamera = false;
 	
 	if (argc != 4)
@@ -516,38 +545,35 @@ int main(int argc, const char** argv)
 		// create the json to submit
 		// this is expected format:
 		/* [{"FishId":"RedFish","FishLocationDateTime":{"DateTime":"\/Date(-62135596800000)\/","OffsetMinutes":0},"XPos":1.234,"YPos":2.342,"ZPos":2.4445},{"FishId":"RedFish","FishLocationDateTime":{"DateTime":"\/Date(-62135596800000)\/","OffsetMinutes":0},"XPos":1.234,"YPos":2.342,"ZPos":2.4445}] */
-		/*
-		json::value jsonArray = json::value::array(goodFish->size());
-		for (int i = 0; i < goodFish->size(); i++)
+		
+		json::value jsonArray = json::value::array(goodFish_side->size());
+		for (int i = 0; i < goodFish_side->size(); i++)
 		{
-			Moments m = moments((*goodFish)[i], false);
+			Moments m = moments((*goodFish_side)[i], false);
 			Point2f mc = Point2f(m.m10 / m.m00, m.m01 / m.m00);
 			json::value fish;
-			fish[L"FishId"] = json::value::string(U("RandomFish"));
-			fish[L"XPos"] = json::value::number(mc.x);
-			fish[L"YPos"] = json::value::number(mc.y);
-			fish[L"ZPos"] = json::value::number(0.0);
+			fish[L"FishId"] = json::value::string(U("Z_FishBlob"));
+			fish[L"XPos"] = json::value::number(0);
+			fish[L"YPos"] = json::value::number(0);
+			fish[L"ZPos"] = json::value::number(sideimg.rows - mc.y);
 			jsonArray[i] = fish;
 		}
-		utility::stringstream_t stream;
-		utility::string_t jsonString = jsonArray.serialize();
-		std::replace(jsonString.begin(), jsonString.end(), '"', '\'');
-		int size_needed = WideCharToMultiByte(CP_UTF8, 0, jsonString.c_str(), jsonString.length(), NULL, 0, NULL, NULL);
-		std::string strTo(size_needed, 0);
-		WideCharToMultiByte(CP_UTF8, 0, jsonString.c_str(), jsonString.length(), &strTo[0], size_needed, NULL, NULL);
+		SubmitFishPoints(jsonArray);
 
-		char* command = (char*)malloc(strTo.size() + 20);
-		strcpy(command, "FishData.exe \"");
-		command = strcat(command, strTo.c_str());
-		strcat(command, "\"");
-		
-		int key = waitKey(10);
-		if (key == 'A')
+		jsonArray = json::value::array(goodFish_top->size());
+		for (int i = 0; i < goodFish_top->size(); i++)
 		{
-			printf("Command: [%s]\n", command);
-			system(command);
+			Moments m = moments((*goodFish_top)[i], false);
+			Point2f mc = Point2f(m.m10 / m.m00, m.m01 / m.m00);
+			json::value fish;
+			fish[L"FishId"] = json::value::string(U("XY_FishBlob"));
+			fish[L"XPos"] = json::value::number(mc.x);
+			fish[L"YPos"] = json::value::number(mc.y);
+			fish[L"ZPos"] = json::value::number(0);
+			jsonArray[i] = fish;
 		}
-		*/
+		SubmitFishPoints(jsonArray);
+
 		Mat sideimgscaled, topimgscaled;
 		cv::resize(sideimg, sideimgscaled, cv::Size(DISPLAY_WIDTH, DISPLAY_HEIGHT));
 		cv::resize(topimg, topimgscaled, cv::Size(DISPLAY_WIDTH, DISPLAY_HEIGHT));
